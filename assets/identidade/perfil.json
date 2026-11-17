@@ -1,0 +1,14 @@
+{
+  "profileName": "brasilnews1231",
+  "logo": "perfil.jpg",
+  "whisperModel": "small",
+  "language": "pt",
+  "sfxGain": 0.6,
+  "captionSize": 60,
+  "activeColor": "#F4DF88",
+  "render": {
+    "concurrency": 1,
+    "cacheBytes": 67108864,
+    "timeoutMs": 120000
+  }
+}

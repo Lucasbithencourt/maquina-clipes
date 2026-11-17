@@ -1,0 +1,4 @@
+interface:
+  display_name: "Máquina de clipes"
+  short_description: "Cortes verticais com identidade de perfil editável"
+  default_prompt: "Use $maquina-clipes para editar meus cortes com Poppins, rosto livre e identidade do meu perfil."
