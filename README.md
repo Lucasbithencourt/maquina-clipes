@@ -4,6 +4,8 @@ Skill para **Codex e Claude Code**, com motor local de cortes verticais e preset
 
 O formato acompanha a revisão de 17/11/2026: Poppins Semibold de 60 px, contorno fino, palavra ativa em amarelo suave, marca pequena na imagem de baixo e duas imagens encostadas, sem faixa central.
 
+**[Baixar a skill completa](https://github.com/Lucasbithencourt/maquina-clipes/releases/latest/download/maquina-clipes.skill)** · [Versões e arquivo ZIP](https://github.com/Lucasbithencourt/maquina-clipes/releases)
+
 ## Instalar a skill
 
 Clone ou copie este repositório inteiro para uma destas pastas:
