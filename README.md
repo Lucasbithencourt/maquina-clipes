@@ -51,6 +51,15 @@ O preset original continua intacto dentro da skill. A personalização fica nos 
 
 O motor prepara cópias de trabalho H.264, propõe a retirada de barras pretas constantes, limita cache e usa temporários no mesmo disco do trabalho. Toda retirada de borda deve ser conferida. Os originais ficam preservados.
 
+## Hooks, edits e revisão (extras do perfil GTA 6)
+
+A pasta `extras/` traz:
+- os **hooks minimalistas** (seguir + 1 pergunta, com som medido e volume final em −14 LUFS);
+- o **edit "versão história"** (16:9 com gancho escrito, diálogo em PT, cortes na batida e assinatura neon; a música entra pelo app);
+- a **revisão a 30 fps**, obrigatória antes de entregar.
+
+Veja [references/hooks-e-edits.md](references/hooks-e-edits.md). Requer, uma vez na pasta de trabalho, `npm install --prefix ".maquina-clipes/extras" playwright-core@1.63.0`, além do Google Chrome e do Python 3 com Pillow.
+
 ## Origem e licenças
 
 Adaptado de [pedroxcardoso/maquina-cortes-gta](https://github.com/pedroxcardoso/maquina-cortes-gta), commit `4381b0c`, sob MIT. A fonte Poppins acompanha sua licença OFL. Consulte [THIRD_PARTY.md](THIRD_PARTY.md). A licença do código não transfere direitos sobre logos, jogos ou vídeos usados como entrada. Remotion mantém seus próprios termos de licença; este pacote não concede uma licença comercial do Remotion.
