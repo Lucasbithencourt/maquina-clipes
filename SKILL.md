@@ -44,6 +44,14 @@ node "SKILL/scripts/setup.mjs" --profile "nome-do-perfil" --logo "caminho/logo.p
 6. Rode `node "MOTOR/scripts/build.mjs" "work" "revisao-01" --prepare-only`. Confira as propostas de remoção de letterbox em `work/media.json`; essa medição não autoriza cortar conteúdo. Corrija `bottomCrop` ou use `false` para desativar quando necessário.
 7. Renderize com o mesmo comando sem `--prepare-only`. Uma revisão usa nova pasta de saída. O motor recusa substituir um MP4 existente, usa temporários no disco do trabalho e limita o cache para reduzir falta de memória.
 
+## Hooks, edits e revisão (perfil de GTA 6)
+
+Depois do render, aplique os hooks de engajamento e revise o vídeo quadro a quadro. Siga [hooks-e-edits.md](references/hooks-e-edits.md):
+- no máximo 2 hooks pequenos por vídeo (seguir + 1 pergunta);
+- o edit "versão história" em 16:9 com música colocada no app;
+- a revisão a 30 fps antes de entregar.
+As ferramentas ficam em `extras/` (uma vez: `npm install --prefix ".maquina-clipes/extras" playwright-core@1.63.0` na pasta de trabalho, sem baixar nada para dentro da skill; Python 3 + Pillow para o edit e a revisão).
+
 ## Conferência e entrega
 
 Olhe a folha de quadros de **cada** vídeo, além das prévias em tamanho real. Confira a união das imagens, Poppins, margem de leitura e rosto livre. Verifique a sincronização contra a fala e ouça o resultado quando houver reprodução disponível. Diferencie o que foi visto, medido e ouvido; sinalize escuta pendente.

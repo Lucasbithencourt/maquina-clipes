@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Notificação de seguir</title>
+<!--
+  Hook de seguir do perfil novo de GTA 6 + animação (nome via ?nome=).
+  Quadro determinístico: window.desenhar(t) desenha o instante t (segundos).
+  ?fundo=pantano  -> fundo de teste escuro | ?fundo=verde -> chroma #00FF00 | ?fundo=transparente
+  Sons (mixar 8–12 dB abaixo da voz, medir com ferramentas/medir_audio.mjs):
+    0.00 s  ding_ideia (notificação chegando)
+    1.62 s  clique     (dedo toca no botão)
+    1.75 s  pop        (vira "Seguindo")
+  Duração: 3,6 s. Some com deslize + fade para transparente (nunca clarão branco).
+-->
+<style>
+  html,body{margin:0;background:#000;}
+  canvas{display:block;width:540px;height:960px;}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+const W = 1080, H = 1920;
+const cv = document.getElementById('c');
+const g = cv.getContext('2d');
+const PARAM = new URLSearchParams(location.search);
+const FUNDO = PARAM.get('fundo') || 'pantano';
+const NOME = (PARAM.get('nome') || 'BRASIL NEWS').toUpperCase();
+// ?tipo=seguir (padrão, começo do vídeo) | curtir | comentar | compartilhar (hooks do meio do vídeo)
+// ?l1= e ?l2= trocam as duas linhas de texto (ex.: a pergunta do comentar ligada ao assunto do corte)
+const TIPOS = {
+  seguir:       { l1: 'GTA 6 animado, todo dia',  l2: 'clipes + animação',          antes: '+ Seguir',   depois: 'Seguindo ✓' },
+  curtir:       { l1: 'Curtiu esse corte?',       l2: 'deixa o like pra ajudar',    antes: '♥ Curtir',   depois: '♥ Curtido' },
+  comentar:     { l1: 'E aí, concorda?',          l2: 'comenta aqui embaixo',       antes: 'Comentar',   depois: 'Enviado ✓' },
+  compartilhar: { l1: 'Manda pro parça',          l2: 'que tá esperando o GTA 6',   antes: '➦ Enviar',   depois: 'Enviado ✓' },
+};
+const TIPO = TIPOS[PARAM.get('tipo')] ? PARAM.get('tipo') : 'seguir';
+const CFG = { ...TIPOS[TIPO], ...(PARAM.get('l1') ? { l1: PARAM.get('l1') } : {}), ...(PARAM.get('l2') ? { l2: PARAM.get('l2') } : {}) };
+
+// Paleta da identidade do perfil
+const COR = {
+  petroleo: '#0B0A10', vidro: 'rgba(14,14,16,0.95)', roxo: '#7B2CFF', rosa: '#FF3EA5',
+  ciano: '#22E6FF', acido: '#B6FF3B', texto: '#F2ECFF', cinza: '#A79BC2', ouro: '#E8B64C',
+};
+// ?mini=1 → versão MINIMALISTA (pedido do criador, 17/11): pílula pequena, 2,5 s; nos outros tipos só uma etiqueta
+const MINI = PARAM.get('mini') === '1';
+const DUR = MINI ? 2.5 : 3.6;
+const T_TOQUE = MINI ? 1.05 : 1.62, T_SEGUINDO = MINI ? 1.15 : 1.75;
+window.SONS = MINI
+  ? (TIPO === 'seguir' ? [{ t: 0.0, som: 'pop' }, { t: T_TOQUE, som: 'clique' }] : [{ t: 0.0, som: 'pop' }])
+  : [{ t: 0.00, som: 'ding_ideia' }, { t: T_TOQUE, som: 'clique' }, { t: T_SEGUINDO, som: 'pop' }];
+window.DURACAO = DUR;
+
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const lin = (t, a, b) => clamp((t - a) / (b - a));
+const easeOut = (x) => 1 - Math.pow(1 - x, 3);
+const easeIn = (x) => x * x * x;
+const easeBack = (x) => { const c1 = 1.5, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+
+function rr(x, y, w, h, r) {
+  g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+  g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+}
+
+// ---------- fundo de teste (o vídeo real fica por baixo) ----------
+function fundo(t) {
+  if (FUNDO === 'transparente') { g.clearRect(0, 0, W, H); return; }
+  if (FUNDO === 'verde') { g.fillStyle = '#00FF00'; g.fillRect(0, 0, W, H); return; }
+  const gr = g.createLinearGradient(0, 0, 0, H);
+  gr.addColorStop(0, '#07060B'); gr.addColorStop(0.55, '#140B22'); gr.addColorStop(1, '#03140F');
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  // reflexos de neon na água do pântano
+  for (let i = 0; i < 14; i++) {
+    const y = 1250 + i * 45, a = 0.05 + 0.04 * Math.sin(t * 2 + i);
+    g.fillStyle = i % 2 ? `rgba(255,62,165,${a})` : `rgba(34,230,255,${a})`;
+    g.fillRect(140 + 60 * Math.sin(i * 1.7 + t), y, 380 + 120 * Math.cos(i), 6);
+  }
+  g.fillStyle = 'rgba(242,236,255,0.18)'; g.font = '700 44px Inter, Helvetica, Arial';
+  g.textAlign = 'center'; g.fillText('(vídeo do episódio por baixo)', W / 2, 1000);
+}
+
+// ---------- avatar do personagem (versão ícone, provisória até a arte final) ----------
+const AVATAR = new Image();
+AVATAR.src = PARAM.get('avatar') || '../../assets/identidade/perfil.jpg'; // foto do perfil (o hooks.mjs passa a do perfil em uso)
+function avatar(cx, cy, r, t) {
+  g.save();
+  g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.clip();
+  g.fillStyle = '#111'; g.fillRect(cx - r, cy - r, r * 2, r * 2);
+  if (AVATAR.complete && AVATAR.naturalWidth) g.drawImage(AVATAR, cx - r, cy - r, r * 2, r * 2);
+  g.restore();
+  g.strokeStyle = COR.ouro; g.lineWidth = 5; g.beginPath(); g.arc(cx, cy, r + 2, 0, Math.PI * 2); g.stroke(); // aro dourado fino
+}
+
+// ---------- borda psicodélica (gradiente que gira) ----------
+function bordaNeon(x, y, w, h, r, t, alpha) {
+  const ang = t * 1.6, cx = x + w / 2, cy = y + h / 2;
+  const gr = g.createLinearGradient(cx + Math.cos(ang) * w / 2, cy + Math.sin(ang) * h, cx - Math.cos(ang) * w / 2, cy - Math.sin(ang) * h);
+  gr.addColorStop(0, '#3A3A3A'); gr.addColorStop(0.45, COR.ouro); gr.addColorStop(1, '#3A3A3A'); // sóbrio: cinza → ouro
+  g.save(); g.globalAlpha = alpha; g.lineWidth = 5; g.strokeStyle = gr; rr(x, y, w, h, r); g.stroke();
+  g.shadowColor = 'rgba(232,182,76,0.6)'; g.shadowBlur = 16; g.globalAlpha = alpha * 0.3; g.stroke(); g.restore();
+}
+
+// ---------- cursor (dedo) ----------
+function dedo(x, y, aperto) {
+  g.save(); g.translate(x, y); g.scale(1 - 0.12 * aperto, 1 - 0.12 * aperto);
+  g.fillStyle = '#F2ECFF'; g.strokeStyle = '#0B0A10'; g.lineWidth = 6;
+  g.beginPath(); g.moveTo(0, 0); g.lineTo(0, 70); g.lineTo(18, 56); g.lineTo(32, 86); g.lineTo(46, 79); g.lineTo(32, 50); g.lineTo(54, 50); g.closePath();
+  g.fill(); g.stroke(); g.restore();
+  if (aperto > 0) { g.save(); g.strokeStyle = `rgba(232,182,76,${0.8 * aperto})`; g.lineWidth = 6;
+    g.beginPath(); g.arc(x, y, 30 + 40 * (1 - aperto), 0, Math.PI * 2); g.stroke(); g.restore(); }
+}
+
+const ICONE = { curtir: '♥', comentar: '💬', compartilhar: '↗' };
+function desenharMini(t) {
+  const ent = easeBack(lin(t, 0, 0.3)), sai = easeIn(lin(t, DUR - 0.35, DUR));
+  const alpha = clamp(lin(t, 0, 0.1)) * (1 - sai);
+  const TOPO = parseFloat(PARAM.get('topo') || '270');
+  g.save(); g.globalAlpha = alpha;
+  g.font = '700 32px Inter, Helvetica, Arial';
+  if (TIPO === 'seguir') {
+    const bw = 520, bh = 96, bx = (W - bw) / 2, by = TOPO + 40 * (1 - ent);
+    g.fillStyle = 'rgba(14,14,16,0.9)'; rr(bx, by, bw, bh, 48); g.fill();
+    g.strokeStyle = 'rgba(232,182,76,0.7)'; g.lineWidth = 2; rr(bx, by, bw, bh, 48); g.stroke();
+    // avatar pequeno
+    g.save(); g.beginPath(); g.arc(bx + 50, by + bh / 2, 34, 0, Math.PI * 2); g.clip();
+    if (AVATAR.complete && AVATAR.naturalWidth) g.drawImage(AVATAR, bx + 16, by + bh / 2 - 34, 68, 68); g.restore();
+    g.fillStyle = COR.texto; g.textAlign = 'left'; g.fillText(NOME, bx + 98, by + 59);
+    const seguindo = t >= T_SEGUINDO, btw = 172, bth = 58, btx = bx + bw - btw - 20, bty = by + (bh - bth) / 2;
+    const ap = t >= T_TOQUE && t < T_TOQUE + 0.2 ? Math.sin(lin(t, T_TOQUE, T_TOQUE + 0.2) * Math.PI) : 0;
+    g.save(); g.translate(btx + btw / 2, bty + bth / 2); g.scale(1 - 0.08 * ap, 1 - 0.08 * ap);
+    g.fillStyle = seguindo ? '#1A1A1C' : COR.ouro; rr(-btw / 2, -bth / 2, btw, bth, 29); g.fill();
+    if (seguindo) { g.strokeStyle = COR.ouro; g.lineWidth = 2; rr(-btw / 2, -bth / 2, btw, bth, 29); g.stroke(); }
+    g.fillStyle = seguindo ? COR.ouro : '#0B0A10'; g.font = '700 24px Inter, Helvetica, Arial'; g.textAlign = 'center';
+    g.fillText(seguindo ? 'Seguindo ✓' : 'Seguir', 0, 9); g.restore();
+  } else {
+    // etiqueta: ícone + uma frase curta, sem botão e sem dedo
+    const txt = (ICONE[TIPO] || '') + '  ' + CFG.l1;
+    const tw = g.measureText(txt).width, bw = tw + 64, bh = 76, bx = (W - bw) / 2, by = TOPO + 40 * (1 - ent);
+    g.fillStyle = 'rgba(14,14,16,0.88)'; rr(bx, by, bw, bh, 38); g.fill();
+    g.strokeStyle = 'rgba(232,182,76,0.6)'; g.lineWidth = 2; rr(bx, by, bw, bh, 38); g.stroke();
+    g.fillStyle = COR.texto; g.textAlign = 'center'; g.fillText(txt, W / 2, by + 49);
+  }
+  g.restore();
+}
+
+window.desenhar = function (t) {
+  g.clearRect(0, 0, W, H);
+  fundo(t);
+  if (t < 0 || t > DUR) return;
+  if (MINI) return desenharMini(t);
+  // entrada (0–0,45 s) e saída (3,1–3,6 s)
+  const ent = easeBack(lin(t, 0, 0.45));
+  const sai = easeIn(lin(t, 3.1, 3.6));
+  const bw = 960, bh = 230, bx = (W - bw) / 2;
+  const TOPO = parseFloat(PARAM.get('topo') || '270'); // 270 = abaixo da barra do TikTok; nos cortes metade/metade usar 600 (peito: livre do rosto, da marca e da legenda)
+  // no topo: entra e sai por cima; mais embaixo (TOPO > 800): entra subindo e sai com fade, sem atravessar a tela
+  const by = TOPO <= 800 ? -bh - 40 + (TOPO + bh + 40) * ent - (TOPO + bh + 120) * sai
+                         : TOPO + 160 * (1 - ent) + 40 * sai;
+  const alpha = clamp(lin(t, 0, 0.12)) * (1 - sai);
+  g.save(); g.globalAlpha = alpha;
+  // sombra suave embaixo (escura, nada de brilho branco)
+  g.save(); g.shadowColor = 'rgba(0,0,0,0.65)'; g.shadowBlur = 50; g.shadowOffsetY = 18;
+  g.fillStyle = COR.vidro; rr(bx, by, bw, bh, 56); g.fill(); g.restore();
+  bordaNeon(bx, by, bw, bh, 56, t, 1);
+  // avatar
+  avatar(bx + 125, by + bh / 2, 72, t);
+  // textos
+  const btw = 235, bth = 92, btx = bx + bw - btw - 34, bty = by + bh / 2 - bth / 2;
+  const limiteTexto = btx - 18; // nada de texto passando por baixo do botão
+  g.textAlign = 'left'; g.fillStyle = COR.texto;
+  let tamNome = 50; g.font = `800 ${tamNome}px Inter, Helvetica, Arial`;
+  while (bx + 245 + g.measureText(NOME).width > limiteTexto && tamNome > 34) { tamNome -= 2; g.font = `800 ${tamNome}px Inter, Helvetica, Arial`; }
+  g.fillText(NOME, bx + 245, by + 92);
+  const ln = g.measureText(NOME).width;
+  g.fillStyle = COR.cinza; g.font = '500 34px Inter, Helvetica, Arial';
+  if (bx + 245 + ln + 16 + g.measureText('· agora').width <= limiteTexto) g.fillText('· agora', bx + 245 + ln + 16, by + 90);
+  g.fillStyle = COR.texto; g.font = '600 34px Inter, Helvetica, Arial';
+  g.fillText(CFG.l1, bx + 245, by + 148);
+  g.fillStyle = COR.ouro; g.font = '600 34px Inter, Helvetica, Arial';
+  g.fillText(CFG.l2, bx + 245, by + 192);
+  // botão Seguir -> Seguindo
+  const seguindo = t >= T_SEGUINDO;
+  const apertoBotao = t >= T_TOQUE && t < T_SEGUINDO + 0.12 ? Math.sin(lin(t, T_TOQUE, T_SEGUINDO + 0.12) * Math.PI) : 0;
+  const pulo = seguindo ? 1 + 0.12 * Math.sin(lin(t, T_SEGUINDO, T_SEGUINDO + 0.25) * Math.PI) : 1;
+  g.save(); g.translate(btx + btw / 2, bty + bth / 2); g.scale(pulo * (1 - 0.08 * apertoBotao), pulo * (1 - 0.08 * apertoBotao));
+  if (!seguindo) { g.fillStyle = COR.ouro; rr(-btw / 2, -bth / 2, btw, bth, 46); g.fill();
+    g.fillStyle = '#0B0A10'; g.font = '800 40px Inter, Helvetica, Arial'; g.textAlign = 'center'; g.fillText(CFG.antes, 0, 14); }
+  else { g.fillStyle = '#1A1A1C'; rr(-btw / 2, -bth / 2, btw, bth, 46); g.fill();
+    g.strokeStyle = COR.ouro; g.lineWidth = 4; rr(-btw / 2, -bth / 2, btw, bth, 46); g.stroke();
+    g.fillStyle = COR.ouro; g.font = '800 34px Inter, Helvetica, Arial'; g.textAlign = 'center'; g.fillText(CFG.depois, 0, 12); }
+  g.restore();
+  // curtir: corações dourados subindo do botão depois do toque
+  if (TIPO === 'curtir' && seguindo) {
+    for (let i = 0; i < 6; i++) {
+      const k = lin(t, T_SEGUINDO + i * 0.06, T_SEGUINDO + 0.9 + i * 0.06);
+      if (k <= 0 || k >= 1) continue;
+      const hx = btx + btw / 2 + (i - 2.5) * 26 + Math.sin(k * 6 + i) * 10, hy = bty - 10 - k * 170, s = 14 + (i % 3) * 5;
+      g.save(); g.globalAlpha = (1 - k) * alpha; g.fillStyle = i % 2 ? COR.ouro : '#E0484F';
+      g.beginPath(); g.moveTo(hx, hy + s * 0.9);
+      g.bezierCurveTo(hx - s * 1.4, hy - s * 0.2, hx - s * 0.6, hy - s * 1.2, hx, hy - s * 0.4);
+      g.bezierCurveTo(hx + s * 0.6, hy - s * 1.2, hx + s * 1.4, hy - s * 0.2, hx, hy + s * 0.9); g.fill(); g.restore();
+    }
+  }
+  // dedo entra (1,0–1,6 s), toca, e sai (2,2–2,7 s)
+  if (t > 0.95 && t < 2.8) {
+    const ida = easeOut(lin(t, 0.95, T_TOQUE)), volta = easeIn(lin(t, 2.2, 2.75));
+    const alvoX = btx + btw * 0.62, alvoY = bty + bth * 0.62;
+    const x = 1150 + (alvoX - 1150) * ida + 260 * volta, y = 820 + (alvoY - 820) * ida + 500 * volta;
+    const ap = t >= T_TOQUE && t < T_TOQUE + 0.3 ? 1 - lin(t, T_TOQUE, T_TOQUE + 0.3) : 0;
+    dedo(x, y, ap);
+  }
+  g.restore();
+};
+
+// prévia ao vivo quando aberto no navegador (sem ?t=); "pronto" só depois do avatar carregar
+const tFixo = new URLSearchParams(location.search).get('t');
+const quandoPronto = () => { if (tFixo !== null) window.desenhar(parseFloat(tFixo)); window.pronto = true; };
+if (AVATAR.complete) quandoPronto(); else AVATAR.onload = AVATAR.onerror = quandoPronto;
+if (tFixo === null) { const t0 = performance.now(); (function loop() { const t = ((performance.now() - t0) / 1000) % (DUR + 1); window.desenhar(t); requestAnimationFrame(loop); })(); }
+</script>
+</body>
+</html>
